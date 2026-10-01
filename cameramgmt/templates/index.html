@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Camera Streams</title>
+<style>
+  :root { --bg:#0b0d10; --panel:#14171c; --border:#242830; --text:#e6e8eb; --muted:#8a8f98; --accent:#3ddc84; --red:#e5484d; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+  header { padding:16px 24px; border-bottom:1px solid var(--border); font-size:18px; font-weight:600; letter-spacing:.02em; }
+  .grid {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 24px; width: 100%; } 
+  .tile { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .tile-body { aspect-ratio: 4 / 3; background: #000; display: flex; align-items: center; justify-content: center; }
+  .tile-body img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* .grid { display:grid; gap:16px; padding:24px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); } */
+  /* .tile { background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; } */
+  .tile-head { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; font-size:13px; color:var(--muted); }
+  .tile-head .id { color:var(--text); font-weight:600; letter-spacing:.03em; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:var(--red); }
+  .dot.on { background:var(--accent); }
+  /* .tile-body { aspect-ratio: 4/3; background:#000; display:flex; align-items:center; justify-content:center; } */
+  /* .tile-body img { width:100%; height:100%; object-fit:cover; display:block; } */
+  .tile-body .off { color:var(--muted); font-size:13px; }
+  .empty { padding:40px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+  <header>Camera Streams</header>
+  <div class="grid" id="grid">
+    {% if not camera_ids %}
+      <div class="empty">No cameras configured.</div>
+    {% endif %}
+    {% for cid in camera_ids %}
+    <div class="tile" id="tile-{{ cid }}">
+      <div class="tile-head">
+        <span class="id">{{ cid }}</span>
+        <span><span class="dot" id="dot-{{ cid }}"></span><span id="status-{{ cid }}">connecting…</span></span>
+      </div>
+      <div class="tile-body">
+        <img id="img-{{ cid }}" alt="{{ cid }}" style="display:none">
+        <span class="off" id="off-{{ cid }}">feed unavailable</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+<script>
+const cameraIds = {{ camera_ids | tojson }};
+
+function attachStream(cid) {
+                              const img = document.getElementById('img-' + cid);
+                              const off = document.getElementById('off-' + cid);
+                              const dot = document.getElementById('dot-' + cid);
+                              const status = document.getElementById('status-' + cid);
+
+                              img.src = '/stream/' + cid + '?t=' + Date.now();
+                              img.onload = () => {
+                                                    img.style.display = 'block';
+                                                    off.style.display = 'none';
+                                                    dot.classList.add('on');
+                                                    status.textContent = 'live';
+                                                  };
+                              img.onerror = () => {
+                                                    img.style.display = 'none';
+                                                    off.style.display = 'block';
+                                                    dot.classList.remove('on');
+                                                    status.textContent = 'offline';
+                                                    setTimeout(() => attachStream(cid), 3000);
+                                                  };
+                            }
+
+cameraIds.forEach(attachStream);
+</script>
+</body>
+</html>

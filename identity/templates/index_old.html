@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IrisLens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #060b14;
+  --panel:   #0b1220;
+  --border:  #0f1e35;
+  --border2: #1a3050;
+  --accent:  #1e90ff;
+  --accent2: #58c4f7;
+  --accent3: #0047b3;
+  --glow:    rgba(30,144,255,0.35);
+  --glow2:   rgba(88,196,247,0.2);
+  --red:     #e8365d;
+  --orange:  #f97c2e;
+  --text:    #dce8f5;
+  --muted:   #3d5a7a;
+  --mono:    'DM Mono', monospace;
+  --sans:    'Outfit', sans-serif;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.5;
+}
+
+/* ── Layout ────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-rows: 54px 1fr;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,11,20,0.9);
+  backdrop-filter: blur(12px);
+  padding: 0 24px;
+  position: relative;
+  z-index: 10;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  opacity: 0.6;
+}
+
+.logo {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  color: var(--text);
+  text-transform: uppercase;
+  margin-right: 36px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.logo span { color: var(--accent); }
+
+.logo-mark {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  background: conic-gradient(from 200deg, #0047b3, #1e90ff, #58c4f7, #0047b3);
+  box-shadow: 0 0 12px var(--glow), 0 0 24px rgba(0,71,179,0.3);
+}
+
+nav {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.tab {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 20px;
+  height: 54px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover { color: var(--accent2); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.ws-status { display: flex; align-items: center; gap: 6px; }
+.ws-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.3s;
+}
+.ws-dot.on { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: blink 2s infinite; }
+.ws-dot.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Page container ───────────────────────────────── */
+.pages { overflow: hidden; position: relative; }
+.page { display: none; height: calc(100vh - 54px); overflow: hidden; }
+.page.active { display: grid; }
+
+/* ── LOGIN PAGE ───────────────────────────────────── */
+#pg-login { grid-template-columns: 1fr; }
+
+.cam-wrap {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.cam-header .left { display: flex; align-items: center; gap: 10px; }
+.cam-label {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: 0.12em;
+}
+
+.cam-body {
+  flex: 1;
+  position: relative;
+  background: #020609;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#camImg {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cam-off-msg {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; color: var(--muted); font-size: 13px; letter-spacing: 0.1em;
+}
+.cam-off-msg .icon { font-size: 38px; opacity: 0.15; }
+
+.cam-overlays {
+  position: absolute; inset: 0; pointer-events: none;
+}
+
+.scan-corner {
+  position: absolute;
+  width: 24px; height: 24px;
+  border-color: var(--accent);
+  border-style: solid;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.scan-corner.tl { top: 28px; left: 28px; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+.scan-corner.tr { top: 28px; right: 28px; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+.scan-corner.bl { bottom: 28px; left: 28px; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+.scan-corner.br { bottom: 28px; right: 28px; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+.cam-overlays.scanning .scan-corner { opacity: 1; animation: cornerpulse 1.5s infinite; }
+@keyframes cornerpulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.scan-sweep {
+  position: absolute; left: 28px; right: 28px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent2), var(--accent), var(--accent2), transparent);
+  box-shadow: 0 0 12px var(--accent), 0 0 24px var(--glow);
+  top: 28px; opacity: 0; animation: none;
+}
+.cam-overlays.scanning .scan-sweep { opacity: 1; animation: sweep 2s linear infinite; }
+@keyframes sweep {
+  0%  { top: 28px; opacity: 0; }
+  5%  { opacity: 1; }
+  95% { opacity: 1; }
+  100%{ top: calc(100% - 28px); opacity: 0; }
+}
+
+.timer-badge {
+  position: absolute; top: 14px; right: 14px;
+  font-family: var(--sans); font-weight: 800; font-size: 26px;
+  color: var(--accent2);
+  text-shadow: 0 0 20px var(--glow2);
+  display: none;
+}
+
+.result-flash {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(6,11,20,0.90);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+  gap: 8px;
+}
+.result-flash.show { opacity: 1; pointer-events: auto; }
+
+.result-status {
+  font-family: var(--sans); font-weight: 800; font-size: 40px;
+  letter-spacing: 0.1em;
+}
+.result-status.known   { color: var(--accent);  text-shadow: 0 0 32px var(--glow); }
+.result-status.unknown { color: var(--red);     text-shadow: 0 0 30px rgba(232,54,93,0.4); }
+.result-status.spoof   { color: var(--orange); }
+
+.result-person {
+  font-family: var(--sans); font-weight: 600; font-size: 20px;
+  color: var(--text); letter-spacing: 0.05em;
+}
+
+.result-meta {
+  font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-align: center; line-height: 2.1;
+}
+
+.cam-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Buttons ──────────────────────────────────────── */
+.btn {
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 8px 16px; border-radius: 5px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+}
+.btn:hover { color: var(--text); border-color: var(--border2); background: rgba(30,144,255,0.04); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+
+.btn-primary {
+  border-color: rgba(30,144,255,0.5); color: var(--accent);
+  background: rgba(30,144,255,0.07);
+}
+.btn-primary:hover {
+  background: rgba(30,144,255,0.14); border-color: var(--accent);
+  box-shadow: 0 0 16px var(--glow), inset 0 0 10px rgba(30,144,255,0.05);
+}
+.btn-danger { border-color: rgba(232,54,93,0.4); color: var(--red); background: rgba(232,54,93,0.06); }
+.btn-danger:hover { background: rgba(232,54,93,0.12); border-color: var(--red); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+
+/* ── ENROLL PAGE ──────────────────────────────────── */
+#pg-enroll {
+  grid-template-columns: 1fr 360px;
+  align-items: start;
+}
+
+.enroll-form {
+  border-right: 1px solid var(--border);
+  padding: 32px;
+  display: flex; flex-direction: column; gap: 22px;
+  height: 100%; overflow-y: auto;
+}
+
+.form-title {
+  font-family: var(--sans); font-weight: 800; font-size: 26px;
+  color: var(--text); letter-spacing: 0.03em; margin-bottom: 4px;
+}
+.form-sub { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field label {
+  font-family: var(--sans); font-weight: 600;
+  font-size: 12px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase;
+}
+
+/* side-by-side field row */
+.field-row { display: flex; gap: 14px; }
+.field-row .field { flex: 1; }
+
+.input {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 5px; padding: 10px 13px;
+  font-family: var(--mono); font-size: 15px; color: var(--text);
+  outline: none; width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus {
+  border-color: rgba(30,144,255,0.6);
+  box-shadow: 0 0 0 3px rgba(30,144,255,0.08);
+}
+.input::placeholder { color: var(--muted); }
+
+/* Styled select — matches .input exactly */
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233d5a7a' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+select.input option { background: #0b1220; color: var(--text); }
+
+.form-actions { display: flex; gap: 8px; }
+.form-actions .btn { flex: 1; padding: 11px; text-align: center; }
+
+/* Enroll progress panel */
+.enroll-progress {
+  padding: 26px; display: flex; flex-direction: column; gap: 18px;
+  height: 100%; overflow-y: auto;
+  background: var(--panel);
+}
+
+.dots-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+.dot-cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--border); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--muted);
+  transition: all 0.3s;
+}
+.dot-cell.done {
+  border-color: var(--accent); background: rgba(30,144,255,0.08);
+  color: var(--accent); box-shadow: 0 0 10px var(--glow);
+}
+
+.enroll-msg { font-size: 13px; color: var(--muted); min-height: 20px; line-height: 1.7; }
+
+/* Enroll summary chips in the progress panel */
+.enroll-summary {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  font-size: 12px;
+}
+.enroll-chip {
+  padding: 3px 10px; border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--accent2); letter-spacing: 0.06em;
+  background: rgba(30,144,255,0.06);
+  font-family: var(--sans); font-weight: 600;
+}
+.enroll-chip .chip-label { color: var(--muted); font-weight: 400; margin-right: 4px; }
+
+/* ── DATABASE PAGE ────────────────────────────────── */
+#pg-db { display: flex; flex-direction: column; overflow: hidden; }
+#pg-db.active { display: flex; }
+
+.db-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0; background: rgba(11,18,32,0.6);
+}
+.db-toolbar .input { max-width: 270px; padding: 7px 11px; font-size: 13px; }
+.db-count { font-size: 12px; color: var(--muted); margin-left: auto; letter-spacing: 0.06em; }
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px; padding: 20px; overflow-y: auto; flex: 1;
+}
+
+.person-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.person-card:hover {
+  border-color: rgba(30,144,255,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 20px rgba(30,144,255,0.05);
+}
+
+.avatar {
+  width: 54px; height: 54px; border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: linear-gradient(135deg, var(--accent3), var(--accent));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--sans); font-weight: 800; font-size: 18px; color: #fff;
+  box-shadow: 0 0 16px var(--glow);
+}
+
+.p-name    { font-family: var(--sans); font-weight: 700; font-size: 15px; color: var(--text); text-align: center; }
+.p-samples { font-size: 12px; color: var(--accent2); letter-spacing: 0.05em; }
+
+.card-actions { display: flex; gap: 5px; width: 100%; margin-top: 4px; }
+.card-actions .btn { flex: 1; text-align: center; }
+
+.empty-state {
+  grid-column: 1/-1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  color: var(--muted); padding: 60px; text-align: center;
+}
+.empty-state .icon { font-size: 42px; opacity: 0.12; }
+.empty-state p { font-size: 13px; letter-spacing: 0.08em; }
+
+/* ── Toast ───────────────────────────────────────── */
+.toasts {
+  position: fixed; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 10000;
+}
+.toast {
+  background: var(--panel); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 10px 15px;
+  font-size: 13px; display: flex; align-items: center; gap: 9px;
+  max-width: 290px; box-shadow: 0 4px 28px rgba(0,0,0,0.7);
+  animation: toastin 0.25s ease;
+  font-family: var(--sans); font-weight: 500;
+}
+@keyframes toastin { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:none} }
+.toast.ok  { border-left: 3px solid var(--accent); }
+.toast.err { border-left: 3px solid var(--red); }
+.toast.inf { border-left: 3px solid var(--accent2); }
+.toast-icon { font-size: 15px; flex-shrink: 0; }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark"></div>
+      IRIS<span>Lens</span>
+    </div>
+    <nav>
+      <button class="tab active" data-page="login">Login</button>
+      <button class="tab" data-page="enroll">Enroll</button>
+      <button class="tab" data-page="db">Database</button>
+    </nav>
+    <div class="header-right">
+      <div class="ws-status">
+        <div class="ws-dot" id="wsDot"></div>
+        <span id="wsLabel">connecting…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Pages ── -->
+  <div class="pages">
+
+    <!-- LOGIN -->
+    <div class="page active" id="pg-login">
+      <div class="cam-wrap">
+        <div class="cam-header">
+          <div class="left">
+            <span class="cam-label">LIVE FEED</span>
+            <span id="camStatus" style="color:var(--muted)">offline</span>
+          </div>
+          <span id="fpsLabel" style="letter-spacing:0.05em">— fps</span>
+        </div>
+        <div class="cam-body">
+          <img id="camImg" src="/stream" alt="" style="display:none">
+          <div class="cam-off-msg" id="camOffMsg">
+            <div class="icon">⊙</div>
+            <span>Camera feed unavailable</span>
+          </div>
+          <div class="cam-overlays" id="camOverlays">
+            <div class="scan-corner tl"></div>
+            <div class="scan-corner tr"></div>
+            <div class="scan-corner bl"></div>
+            <div class="scan-corner br"></div>
+            <div class="scan-sweep"></div>
+            <div class="timer-badge" id="timerBadge"></div>
+          </div>
+          <div class="result-flash" id="resultFlash">
+            <div class="result-status" id="resultStatus">GRANTED</div>
+            <div class="result-person" id="resultPerson"></div>
+            <div class="result-meta" id="resultMeta"></div>
+          </div>
+        </div>
+        <div class="cam-footer">
+          <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">▶ Initiate Login</button>
+          <button class="btn btn-danger" id="stopBtn" onclick="doStop()" disabled>■ Stop</button>
+        </div>
+      </div>
+    </div><!-- /login -->
+
+    <!-- ENROLL -->
+    <div class="page" id="pg-enroll">
+
+      <div class="enroll-form">
+        <div>
+          <div class="form-title">Enroll Person</div>
+          <div class="form-sub">Capture face embeddings from camera feed</div>
+        </div>
+        <div class="field">
+          <label>Username</label>
+          <input class="input" id="eId" placeholder="jane.doe">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input class="input" id="ePassword" type="password" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label>Samples to capture</label>
+          <input class="input" id="eSamples" type="number" value="10" min="1" max="30">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="enrollBtn" onclick="doEnroll()">▶ Begin Capture</button>
+          <button class="btn" onclick="cancelEnroll()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="enroll-progress">
+        <div class="section-title">Capture Progress</div>
+        <!-- summary chips: populated once enrollment starts -->
+        <div class="enroll-summary" id="enrollSummary"></div>
+        <div class="dots-grid" id="dotsGrid"></div>
+        <div class="conf-wrap">
+          <div class="conf-row">
+            <span id="enrollProgLabel">0 / 10</span>
+          </div>
+          <div class="conf-track"><div class="conf-fill" id="enrollFill"></div></div>
+        </div>
+        <div class="enroll-msg" id="enrollMsg">Fill in the form and press Begin Capture.</div>
+      </div>
+
+    </div><!-- /enroll -->
+
+    <!-- DATABASE -->
+    <div class="page" id="pg-db">
+      <div class="db-toolbar">
+        <input class="input" id="dbSearch" placeholder="Search username…" oninput="filterDb()">
+        <button class="btn btn-primary" onclick="loadDb()">↻ Refresh</button>
+        <button class="btn btn-danger" onclick="clearAll()">⚠ Clear All</button>
+        <span class="db-count" id="dbCount">0 people</span>
+      </div>
+      <div class="people-grid" id="peopleGrid">
+        <div class="empty-state">
+          <div class="icon">◎</div>
+          <p>No records — enroll someone first</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /pages -->
+</div><!-- /shell -->
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── WebSocket ──────────────────────────────────────────────────────────────
+let ws, wsReady = false;
+const WS_URL = `ws://${location.host}/ws`;
+
+function wsConnect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    wsReady = true;
+    setWs(true);
+    loadCam();
+    loadDb();
+  };
+  ws.onclose = () => {
+    wsReady = false;
+    setWs(false);
+    setTimeout(wsConnect, 3000);
+  };
+  ws.onerror = () => {
+    wsReady = false;
+    setWs(false);
+  };
+  ws.onmessage = e => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    handleEvent(msg.event, msg.data);
+  };
+}
+
+function setWs(on) {
+  const dot = document.getElementById('wsDot');
+  const lbl = document.getElementById('wsLabel');
+  dot.className = 'ws-dot ' + (on ? 'on' : 'err');
+  lbl.textContent = on ? 'connected' : 'offline';
+}
+
+wsConnect();
+
+// ── Events from backend ────────────────────────────────────────────────────
+let scanning = false;
+let _timerInterval = null;
+let _timerRemaining = 0;
+
+function startClientTimer(seconds) {
+  stopClientTimer();
+  _timerRemaining = seconds;
+  const tb = document.getElementById('timerBadge');
+  tb.textContent = _timerRemaining + 's';
+  tb.style.display = 'block';
+  _timerInterval = setInterval(() => {
+    _timerRemaining = Math.max(0, _timerRemaining - 1);
+    tb.textContent = _timerRemaining + 's';
+    if (_timerRemaining <= 0) stopClientTimer();
+  }, 1000);
+}
+
+function syncClientTimer(remaining) {
+  // Nudge the display if backend and client have drifted by more than 1s
+  if (Math.abs(_timerRemaining - remaining) > 1) {
+    _timerRemaining = remaining;
+    document.getElementById('timerBadge').textContent = remaining + 's';
+  }
+}
+
+function stopClientTimer() {
+  if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+  _timerRemaining = 0;
+}
+
+function handleEvent(ev, d) {
+  if (ev === 'scan_started') {
+    scanning = true;
+    setUiScanning(true);
+    startClientTimer(d.timeout ?? 10);
+  }
+  else if (ev === 'scan_frame') {
+    if (d.remaining !== undefined) syncClientTimer(d.remaining);
+  }
+  else if (ev === 'scan_result') {
+    scanning = false;
+    stopClientTimer();
+    setUiScanning(false);
+    if (d.status === 'ERROR') {
+      toast('Pipeline error — check terminal', 'err');
+      return;
+    }
+    showResult(d);
+  }
+  else if (ev === 'scan_aborted') {
+    scanning = false;
+    stopClientTimer();
+    setUiScanning(false);
+    toast('Scan stopped', 'inf');
+  }
+  else if (ev === 'enroll_started') {
+    buildDots(d.total);
+    setEnrollMsg('Stand in front of the camera…');
+    // Show summary chips
+    const summary = document.getElementById('enrollSummary');
+    summary.innerHTML = `
+      <div class="enroll-chip"><span class="chip-label">USERNAME</span>${d.username}</div>
+    `;
+  }
+  else if (ev === 'enroll_frame') {
+    updateDots(d.collected, d.total);
+    setEnrollMsg(d.msg);
+  }
+  else if (ev === 'enroll_done') {
+    toast(`${d.username} enrolled (${d.samples} samples)`, 'ok');
+    setEnrollMsg(`✓ Done — ${d.username} enrolled with ${d.samples} samples.`);
+    document.getElementById('enrollBtn').disabled = false;
+    loadDb();
+  }
+  else if (ev === 'enroll_cancelled') {
+    toast('Enrollment cancelled', 'inf');
+    document.getElementById('enrollBtn').disabled = false;
+    setEnrollMsg('Enrollment cancelled.');
+  }
+}
+
+// ── Camera stream ──────────────────────────────────────────────────────────
+let fpsTick = 0;
+function loadCam() {
+  const img = document.getElementById('camImg');
+  const off = document.getElementById('camOffMsg');
+  img.src = '/stream?' + Date.now();
+  img.onload = () => {
+    img.style.display = 'block';
+    off.style.display = 'none';
+    document.getElementById('camStatus').textContent = 'live';
+    document.getElementById('camStatus').style.color = 'var(--accent)';
+    if (!fpsTick) {
+      let last = Date.now(), frames = 0;
+      img.addEventListener('load', () => {
+        frames++;
+        const now = Date.now();
+        if (now - last >= 1000) {
+          document.getElementById('fpsLabel').textContent = frames + ' fps';
+          frames = 0; last = now;
+        }
+      });
+      fpsTick = 1;
+    }
+  };
+  img.onerror = () => {
+    img.style.display = 'none';
+    off.style.display = 'flex';
+    document.getElementById('camStatus').textContent = 'offline';
+    document.getElementById('camStatus').style.color = 'var(--red)';
+  };
+}
+
+// ── Login actions ──────────────────────────────────────────────────────────
+async function doLogin() {
+  const r = await fetch('/api/login', { method: 'POST' });
+  if (!r.ok) { const j = await r.json(); toast(j.error || 'Error', 'err'); }
+}
+
+async function doStop() {
+  await fetch('/api/login/stop', { method: 'POST' });
+}
+
+function setUiScanning(on) {
+  document.getElementById('loginBtn').disabled = on;
+  document.getElementById('stopBtn').disabled = !on;
+  document.getElementById('camOverlays').classList.toggle('scanning', on);
+  document.getElementById('timerBadge').style.display = on ? 'block' : 'none';
+  if (!on) document.getElementById('camOverlays').classList.remove('scanning');
+  if (on) document.getElementById('resultFlash').classList.remove('show');
+}
+
+function showResult(d) {
+  const flash      = document.getElementById('resultFlash');
+  const st         = document.getElementById('resultStatus');
+  const person     = document.getElementById('resultPerson');
+  const meta       = document.getElementById('resultMeta');
+  const timerBadge = document.getElementById('timerBadge');
+
+  timerBadge.style.display = 'none';
+
+  if (d.status === 'KNOWN') {
+    st.textContent = 'GRANTED';
+    st.className   = 'result-status known';
+    person.textContent = d.username;
+
+    meta.innerHTML = `Confidence: ${(d.confidence * 100).toFixed(1)}%`;
+    toast(`Access granted: ${d.username}`, 'ok');
+  } else {
+    st.textContent = d.status === 'SPOOF' ? 'SPOOF' : 'DENIED';
+    st.className   = 'result-status ' + (d.status === 'SPOOF' ? 'spoof' : 'unknown');
+    person.textContent    = '';
+    meta.textContent = `Confidence: ${(d.confidence * 100).toFixed(1)}%`;
+    toast('Access denied', 'err');
+  }
+
+  flash.classList.add('show');
+  setTimeout(() => flash.classList.remove('show'), 4000);
+}
+
+// ── Enroll ─────────────────────────────────────────────────────────────────
+async function doEnroll() {
+  const username = document.getElementById('eId').value.trim();
+  const password = document.getElementById('ePassword').value;
+  const samples  = parseInt(document.getElementById('eSamples').value) || 10;
+  if (!username || !password) { toast('Enter username and password', 'err'); return; }
+  document.getElementById('enrollBtn').disabled = true;
+  buildDots(samples);
+  const r = await fetch('/api/people', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username:    username,
+      password:    password,
+      num_samples: samples,
+    })
+  });
+  if (!r.ok) {
+    const j = await r.json();
+    toast(j.error || 'Error', 'err');
+    document.getElementById('enrollBtn').disabled = false;
+  }
+}
+
+async function cancelEnroll() {
+  document.getElementById('enrollBtn').disabled = false;
+  setEnrollMsg('Cancelled.');
+}
+
+function buildDots(n) {
+  const g = document.getElementById('dotsGrid');
+  g.innerHTML = '';
+  document.getElementById('enrollProgLabel').textContent = `0 / ${n}`;
+  document.getElementById('enrollFill') && (document.getElementById('enrollFill').style.width = '0%');
+  for (let i = 0; i < n; i++) {
+    g.innerHTML += `<div class="dot-cell" id="dot-${i}">${i + 1}</div>`;
+  }
+}
+
+function updateDots(collected, total) {
+  document.getElementById('enrollProgLabel').textContent = `${collected} / ${total}`;
+  const fill = document.getElementById('enrollFill');
+  if (fill) fill.style.width = ((collected / total) * 100) + '%';
+  for (let i = 0; i < collected; i++) {
+    const d = document.getElementById('dot-' + i);
+    if (d) { d.classList.add('done'); d.textContent = '✓'; }
+  }
+}
+
+function setEnrollMsg(m) {
+  document.getElementById('enrollMsg').textContent = m;
+}
+
+// ── Database ───────────────────────────────────────────────────────────────
+let allPeople = [];
+
+async function loadDb() {
+  try {
+    const r = await fetch('/api/people');
+    allPeople = await r.json();
+    renderDb(allPeople);
+  } catch {}
+}
+
+function renderDb(people) {
+  document.getElementById('dbCount').textContent = people.length + ' people';
+  const grid = document.getElementById('peopleGrid');
+  if (!people.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">◎</div><p>No records — enroll someone first</p></div>';
+    return;
+  }
+  grid.innerHTML = people.map(p => `
+    <div class="person-card">
+      <div class="avatar">${initials(p.username)}</div>
+      <div class="p-name">${p.username}</div>
+      <div class="p-samples">${p.sample_count} samples</div>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-primary" onclick="enrollMore('${p.username}')">+ More</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePerson('${p.username}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function filterDb() {
+  const q = document.getElementById('dbSearch').value.toLowerCase();
+  renderDb(allPeople.filter(p =>
+    p.username.toLowerCase().includes(q)
+  ));
+}
+
+async function deletePerson(username) {
+  if (!confirm(`Delete ${username}?`)) return;
+  const r = await fetch('/api/people/' + encodeURIComponent(username), { method: 'DELETE' });
+  if (r.ok) { toast(`${username} deleted`, 'inf'); loadDb(); }
+  else toast('Delete failed', 'err');
+}
+
+// Pre-fill enroll form and switch to enroll tab when "+ More" is clicked
+// (password is never returned by the API, so the user re-enters it)
+function enrollMore(username) {
+  document.getElementById('eId').value       = username;
+  document.getElementById('ePassword').value = '';
+  switchPage('enroll');
+}
+
+async function clearAll() {
+  if (!confirm('Delete ALL face data? This cannot be undone.')) return;
+  for (const p of allPeople) {
+    await fetch('/api/people/' + encodeURIComponent(p.username), { method: 'DELETE' });
+  }
+  toast('Database cleared', 'inf'); loadDb();
+}
+
+function initials(n) {
+  return n.split(/[.\s_-]+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function toast(msg, type = 'inf') {
+  const icons = { ok: '✓', err: '✗', inf: 'ℹ' };
+  const c = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ'}</span>${msg}`;
+  c.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.3s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
+}
+
+// ── Tab routing ───────────────────────────────────────────────────────────
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('pg-' + name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === name));
+  if (name === 'db') loadDb();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchPage(t.dataset.page));
+});
+
+// init dots
+buildDots(10);
+</script>
+</body>
+</html>

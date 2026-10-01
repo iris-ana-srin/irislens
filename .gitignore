@@ -1,0 +1,169 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.pyre/
+.tox/
+.nox/
+
+# ============================================================
+# Virtual Environments
+# ============================================================
+.venv/
+venv/
+env/
+ENV/
+virtualenv/
+.conda/
+conda-env/
+*env/
+
+# ============================================================
+# IDE / Editor
+# ============================================================
+.vscode/
+.idea/
+*.iml
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ============================================================
+# OS Files
+# ============================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100/
+.Trashes/
+
+# ============================================================
+# AI Models
+# ============================================================
+models/
+
+#if models folders exist anywhere in the repo
+**/models/
+
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+log/
+
+# Project-specific logs
+identity/logs/
+
+# ============================================================
+# Build / Distribution Output
+# ============================================================
+build/
+dist/
+out/
+output/
+release/
+debug/
+target/
+
+# ============================================================
+# Generated Media
+# ============================================================
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.wav
+*.mp3
+*.flac
+*.aac
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
+
+# Project-generated media/output folders
+snapshots/
+videos/
+recordings/
+
+# ============================================================
+# Credentials / Secrets / Keys
+# ============================================================
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+*.cer
+*.jks
+*.keystore
+*.kdbx
+*.secret
+*.secrets
+secrets/
+credentials/
+keys/
+
+# ============================================================
+# Identity Data (Project Specific)
+# ============================================================
+identity/data/
+identity/logs/
+
+# If identity exists under a nested project directory:
+**/identity/data/
+**/identity/logs/
+
+# ============================================================
+# Jupyter
+# ============================================================
+.ipynb_checkpoints/
+
+# ============================================================
+# Temporary Files
+# ============================================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
+# ============================================================
+# Misc
+# ============================================================
+.cache/
+coverage.xml
+*.coverage

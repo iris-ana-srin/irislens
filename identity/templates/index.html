@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Facial Recognition</title>
+<style>
+  :root { --bg:#0b0d10; --panel:#14171c; --border:#242830; --text:#e6e8eb; --muted:#8a8f98;
+          --accent:#3ddc84; --red:#e5484d; --amber:#e5c53d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:18px; margin:0; font-weight:600; }
+  .cam-picker { display:flex; gap:8px; margin-left:auto; }
+  .cam-btn { background:var(--panel); border:1px solid var(--border); color:var(--muted);
+             padding:6px 14px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .cam-btn.active { border-color:var(--accent); color:var(--text); }
+
+  .layout { display:grid; grid-template-columns: 1.4fr 1fr; gap:20px; padding:24px; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+
+  .video-wrap { position:relative; aspect-ratio:4/3; background:#000; border-radius:8px; overflow:hidden; }
+  .video-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+
+  .controls { display:flex; gap:10px; margin-top:14px; }
+  button.primary { background:var(--accent); color:#06140c; border:none; padding:10px 18px;
+                    border-radius:6px; font-weight:600; cursor:pointer; }
+  button.danger { background:transparent; color:var(--red); border:1px solid var(--red);
+                   padding:10px 18px; border-radius:6px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+
+  .status-line { margin-top:12px; font-size:13px; color:var(--muted); }
+  .status-line b { color:var(--text); }
+
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; }
+  th, td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--border); }
+  th { color:var(--muted); font-weight:500; }
+  .tag { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+  .tag.KNOWN { background:rgba(61,220,132,.15); color:var(--accent); }
+  .tag.UNKNOWN { background:rgba(229,72,77,.15); color:var(--red); }
+  .tag.SPOOF { background:rgba(229,197,61,.15); color:var(--amber); }
+
+  h2 { font-size:14px; margin:0 0 10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+
+  .enroll-form { display:grid; gap:8px; margin-top:12px; }
+  .enroll-form input { background:#0b0d10; border:1px solid var(--border); color:var(--text);
+                        padding:8px 10px; border-radius:6px; font-size:13px; }
+  .people-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:13px; }
+  .people-row button { background:none; border:none; color:var(--red); cursor:pointer; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Facial Recognition</h1>
+  <div class="cam-picker" id="camPicker"></div>
+</header>
+
+<div class="layout">
+  <div class="panel">
+    <div class="video-wrap"><img id="camImg" alt="camera feed"></div>
+    <div class="controls">
+      <button class="primary" id="loginBtn">Start Scan</button>
+      <button class="danger" id="stopBtn" disabled>Stop</button>
+    </div>
+    <div class="status-line" id="statusLine">idle</div>
+
+    <table id="tracksTable" style="display:none">
+      <thead><tr><th>Track</th><th>Status</th><th>Confidence</th></tr></thead>
+      <tbody id="tracksBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Enroll on this camera</h2>
+    <div class="enroll-form">
+      <input id="enrollUser" placeholder="username">
+      <input id="enrollPass" type="password" placeholder="password">
+      <input id="enrollSamples" type="number" placeholder="samples (default 10)">
+      <button class="primary" id="enrollBtn">Enroll</button>
+    </div>
+    <div class="status-line" id="enrollStatus"></div>
+
+    <h2 style="margin-top:20px">People</h2>
+    <div id="peopleList"></div>
+  </div>
+</div>
+
+<script>
+const cameraIds = {{ camera_ids | tojson }};
+let activeCamera = cameraIds[0] || null;
+let scanning = false;
+
+const camImg      = document.getElementById('camImg');
+const loginBtn     = document.getElementById('loginBtn');
+const stopBtn      = document.getElementById('stopBtn');
+const statusLine   = document.getElementById('statusLine');
+const tracksTable  = document.getElementById('tracksTable');
+const tracksBody   = document.getElementById('tracksBody');
+const enrollStatus = document.getElementById('enrollStatus');
+const peopleList   = document.getElementById('peopleList');
+
+function renderPicker() {
+  const picker = document.getElementById('camPicker');
+  picker.innerHTML = '';
+  cameraIds.forEach(cid => {
+    const btn = document.createElement('button');
+    btn.className = 'cam-btn' + (cid === activeCamera ? ' active' : '');
+    btn.textContent = cid;
+    btn.onclick = () => selectCamera(cid);
+    picker.appendChild(btn);
+  });
+}
+
+function selectCamera(cid) {
+  activeCamera = cid;
+  renderPicker();
+  camImg.src = '/stream/' + cid + '?t=' + Date.now();
+  statusLine.textContent = 'idle';
+  tracksTable.style.display = 'none';
+  scanning = false;
+  loginBtn.disabled = false;
+  stopBtn.disabled = true;
+}
+
+// ── Scan controls ───────────────────────────────────────────────────────
+loginBtn.onclick = async () => {
+  const res = await fetch('/api/login', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({camera_id: activeCamera})
+  });
+  if (res.ok) {
+    scanning = true;
+    loginBtn.disabled = true;
+    stopBtn.disabled = false;
+  } else {
+    const err = await res.json();
+    statusLine.textContent = 'error: ' + (err.error || res.status);
+  }
+};
+
+stopBtn.onclick = async () => {
+  await fetch('/api/login/stop', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({camera_id: activeCamera})
+  });
+  scanning = false;
+  loginBtn.disabled = false;
+  stopBtn.disabled = true;
+};
+
+// ── Enroll ──────────────────────────────────────────────────────────────
+document.getElementById('enrollBtn').onclick = async () => {
+  const username = document.getElementById('enrollUser').value.trim();
+  const password = document.getElementById('enrollPass').value;
+  const samples  = parseInt(document.getElementById('enrollSamples').value) || undefined;
+  if (!username || !password) { enrollStatus.textContent = 'username and password required'; return; }
+
+  const res = await fetch('/api/people', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username, password, num_samples: samples, camera_id: activeCamera})
+  });
+  const body = await res.json();
+  enrollStatus.textContent = res.ok ? `enrolling on ${activeCamera}…` : ('error: ' + body.error);
+};
+
+async function loadPeople() {
+  const res = await fetch('/api/people');
+  const people = await res.json();
+  peopleList.innerHTML = '';
+  (people || []).forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'people-row';
+    const name = typeof p === 'string' ? p : (p.username || JSON.stringify(p));
+    row.innerHTML = `<span>${name}</span><button data-u="${name}">remove</button>`;
+    row.querySelector('button').onclick = async (e) => {
+      await fetch('/api/people/' + encodeURIComponent(e.target.dataset.u), {method: 'DELETE'});
+      loadPeople();
+    };
+    peopleList.appendChild(row);
+  });
+}
+
+// ── WebSocket — filter every event to the currently selected camera ──────
+function connectWs() {
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    const d = msg.data || {};
+    if (d.camera_id && d.camera_id !== activeCamera) return; // not our active camera — ignore
+
+    if (msg.event === 'scan_frame') {
+      statusLine.innerHTML = `<b>${d.quality}</b> — ${d.remaining}s left` + (d.reason ? ` (${d.reason})` : '');
+      if (d.tracks && d.tracks.length) {
+        tracksTable.style.display = 'table';
+        tracksBody.innerHTML = d.tracks.map(t =>
+          `<tr><td>${t.track_id}</td><td><span class="tag ${t.status}">${t.status}</span></td><td>${t.confidence}</td></tr>`
+        ).join('');
+      } else {
+        tracksTable.style.display = 'none';
+      }
+    } else if (msg.event === 'scan_result') {
+      statusLine.innerHTML = d.status === 'KNOWN'
+        ? `<b style="color:#3ddc84">Recognized: ${d.username}</b> (${d.confidence})`
+        : `<b style="color:#e5484d">Not recognized</b> (${d.confidence})`;
+      scanning = false;
+      loginBtn.disabled = false;
+      stopBtn.disabled = true;
+    } else if (msg.event === 'scan_aborted') {
+      statusLine.textContent = 'scan stopped';
+      scanning = false;
+      loginBtn.disabled = false;
+      stopBtn.disabled = true;
+    } else if (msg.event === 'enroll_frame') {
+      enrollStatus.textContent = d.msg + ` (${d.collected}/${d.total})`;
+    } else if (msg.event === 'enroll_done') {
+      enrollStatus.textContent = `enrolled ${d.username} (${d.samples} samples)`;
+      loadPeople();
+    } else if (msg.event === 'enroll_cancelled') {
+      enrollStatus.textContent = `enrollment stopped (${d.collected} captured)`;
+    }
+  };
+  ws.onclose = () => setTimeout(connectWs, 2000);
+}
+
+renderPicker();
+if (activeCamera) selectCamera(activeCamera);
+loadPeople();
+connectWs();
+</script>
+</body>
+</html>
