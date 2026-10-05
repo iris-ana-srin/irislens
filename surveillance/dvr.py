@@ -42,7 +42,7 @@ def take_snapshot(camid: str):
         print(f"[DVR:{camid}] No frame available for snapshot")
         return
 
-    out_dir = os.path.join(SNAPSHOT_ROOT, camid)
+    out_dir = os.path.join(SNAPSHOT_ROOT)
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = os.path.join(out_dir, f"{ts}.jpg")
@@ -53,7 +53,7 @@ def take_snapshot(camid: str):
 def record_video(camid: str):
     print(f"[DVR:{camid}] Video recording triggered")
 
-    out_dir = os.path.join(VIDEO_ROOT, camid)
+    out_dir = os.path.join(VIDEO_ROOT)
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = os.path.join(out_dir, f"{ts}.mp4")

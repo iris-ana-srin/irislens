@@ -346,15 +346,14 @@ def mqtt_publish_result(result_payload: dict):
         mqtt_service.publish_result({"camid": camid, "tagname": tag, "tagvalue": val})
 
 
+mqtt_service =  MqttService(
+                                broker=MQTT_BROKER, port=MQTT_PORT,
+                                request_topic=REQUEST_TOPIC, response_topic=RESPONSE_TOPIC,
+                                handlers={"loginreq":  handle_login},
+                            )
+mqtt_service.start()
 if __name__ == "__main__":
     print(f"[FacialRecognition] Starting on http://localhost:{PORT1}")
     for cid in camera_ids:
         print(f"[FacialRecognition]   {cid} → http://localhost:{PORT1}/stream/{cid}")
-
-    mqtt_service =  MqttService(
-                                    broker=MQTT_BROKER, port=MQTT_PORT,
-                                    request_topic=REQUEST_TOPIC, response_topic=RESPONSE_TOPIC,
-                                    handlers={"loginreq":  handle_login},
-                                )
-    mqtt_service.start()
     app.run(host=HOST, port=PORT1, threaded=True)

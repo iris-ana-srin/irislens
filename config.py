@@ -1,6 +1,7 @@
 import os
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = Path(__file__).resolve().parent
 
 HOST = "localhost"
 PORT1 = 5050
@@ -22,7 +23,7 @@ STREAM_FPS = 30
 JPEG_QUALITY = 75
 
 #-----MQTT-----
-MQTT_BROKER = "localhost"
+MQTT_BROKER = "172.18.112.1"
 MQTT_PORT   = 1883
 
 REQUEST_TOPIC  = "irislens/reqs"
@@ -32,13 +33,14 @@ RESPONSE_TOPIC = "irislens/response"
 SIM_THRESHOLD = 0.5
 EMBEDDING_DIM = 512
 
-CAPTURE_TIMEOUT = 1  # seconds
+CAPTURE_TIMEOUT = 1  #seconds
 
 NUM_SAMPLES = 10
 ENROLL_SIM_THRESHOLD = 0.5
 
-DATA_DIR       = os.path.join(BASE_DIR, "identity/data")
-AUDIT_LOG_PATH = os.path.join(BASE_DIR, "identity/logs/audit.log")
+IDENTITY_ROOT = Path(os.environ.get("IDENTITY_ROOT", BASE_DIR / "output" / "identity"))
+DATA_DIR       = str(IDENTITY_ROOT / 'data')
+AUDIT_LOG_PATH = str(IDENTITY_ROOT / "logs" / "audit.log")
 
 #frame quality filter thresholds
 FRAME_MIN_LAPLACIAN  = 50.0
@@ -53,5 +55,6 @@ VIDEO_DURATION = 10
 VIDEO_FPS      = 20
 PREBUFFER_SEC  = 5
 
-SNAPSHOT_ROOT = "C:/FTP"
-VIDEO_ROOT    = "C:/FTP"
+SURVEILLANCE_ROOT = Path(os.environ.get("SURVEILLANCE_ROOT", BASE_DIR / "output" / "surveillance"))
+SNAPSHOT_ROOT = str(SURVEILLANCE_ROOT)
+VIDEO_ROOT    = str(SURVEILLANCE_ROOT)

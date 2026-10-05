@@ -27,6 +27,7 @@ virtualenv/
 .conda/
 conda-env/
 *env/
+*env-linux/
 
 # ============================================================
 # IDE / Editor
