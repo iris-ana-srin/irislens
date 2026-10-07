@@ -1,0 +1,8 @@
+*env/
+*env-linux/
+__pycache__/
+**/__pycache__/
+*.pyc
+.git/
+.gitignore
+data/

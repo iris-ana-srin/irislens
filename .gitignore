@@ -138,15 +138,8 @@ secrets/
 credentials/
 keys/
 
-# ============================================================
-# Identity Data (Project Specific)
-# ============================================================
-identity/data/
-identity/logs/
-
-# If identity exists under a nested project directory:
-**/identity/data/
-**/identity/logs/
+#Project Specifics
+data/
 
 # ============================================================
 # Jupyter
@@ -161,6 +154,13 @@ temp/
 *.tmp
 *.bak
 *.orig
+
+# ============================================================
+# Docker
+# ============================================================
+# local compose overrides (auto-loaded by `docker compose up`)
+docker-compose.override.yml
+docker-compose.*.override.yml
 
 # ============================================================
 # Misc

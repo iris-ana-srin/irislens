@@ -1,0 +1,43 @@
+services:
+  cameramgmt:
+    build: .
+    image: irislens:latest
+    command: ["gunicorn", "--bind", "0.0.0.0:5051", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "cameramgmt.app:app"]
+    environment:
+      - HOST=0.0.0.0
+      - PORT2=5051
+    ports:
+      - "5051:5051"
+    volumes:
+      - ./data:/app/data
+      - ./config.py:/app/config.py:ro
+    restart: unless-stopped
+
+  identity:
+    build: .
+    image: irislens:latest
+    command: ["gunicorn", "--bind", "0.0.0.0:5050", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "identity.app:app"]
+    environment:
+      - HOST=0.0.0.0
+      - PORT1=5050
+      - MQTT_BROKER=${MQTT_BROKER:-host.docker.internal}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./data:/app/data
+      - ./identity/models:/app/identity/models:ro
+      - ./config.py:/app/config.py:ro
+    restart: unless-stopped
+
+  surveillance:
+    build: .
+    image: irislens:latest
+    command: ["python", "-m", "surveillance.dvr"]
+    environment:
+      - MQTT_BROKER=${MQTT_BROKER:-host.docker.internal}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+    volumes:
+      - ./data:/app/data
+      - ./config.py:/app/config.py:ro
+    restart: unless-stopped

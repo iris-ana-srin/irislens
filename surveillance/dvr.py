@@ -1,12 +1,13 @@
 #dvr.py
 import os
 import sys
+import cv2
 import time
+import subprocess
 import threading
+import imageio_ffmpeg
 from datetime import datetime
 from collections import deque
-
-import cv2
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mqttclient import MqttService
@@ -64,13 +65,34 @@ def record_video(camid: str):
         return
     h, w = frame.shape[:2]
 
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    writer = cv2.VideoWriter(path, fourcc, VIDEO_FPS, (w, h))
-
+    ffmpeg = subprocess.Popen(
+                                [
+                                    imageio_ffmpeg.get_ffmpeg_exe(),
+                                    "-y",
+                                    "-loglevel", "error",
+                                    "-f", "rawvideo",
+                                    "-pix_fmt", "bgr24",
+                                    "-s", f"{w}x{h}",
+                                    "-r", str(VIDEO_FPS),
+                                    "-i", "-",
+                                    "-c:v", "libx264",
+                                    "-preset", "ultrafast",
+                                    "-tune", "zerolatency",
+                                    "-pix_fmt", "yuv420p",
+                                    "-movflags", "+faststart",
+                                    path,
+                                ],
+                                stdin=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                            )
     with _prebuffer_locks[camid]:
         pre_frames = list(_prebuffers[camid])
     for f in pre_frames:
-        writer.write(f)
+        try:
+            ffmpeg.stdin.write(f.tobytes())
+        except (BrokenPipeError, OSError) as ex:
+            print(f"[DVR:{camid}] FFmpeg write failed: {ex}")
+            return
     print(f"[DVR:{camid}] Prebuffer size:", len(pre_frames), "/ expected:", VIDEO_FPS * PREBUFFER_SEC)
 
     post_duration = VIDEO_DURATION - PREBUFFER_SEC
@@ -82,8 +104,29 @@ def record_video(camid: str):
         frame = cameras.read(camid)
         if frame is None:
             continue
-        writer.write(frame)
-    writer.release()
+        try:
+            if ffmpeg.stdin:
+                ffmpeg.stdin.write(frame.tobytes())
+        except (BrokenPipeError, OSError) as ex:
+            print(f"[DVR:{camid}] FFmpeg write failed: {ex}")
+            return
+
+    if ffmpeg.stdin:
+        ffmpeg.stdin.close()
+    stderr = (
+ffmpeg.stderr.read().decode("utf-8", errors="ignore")
+if ffmpeg.stderr
+else ""
+)
+
+    rc = ffmpeg.wait()
+
+
+    if rc != 0:
+        print(f"[DVR:{camid}] FFmpeg failed:")
+        print(stderr)
+        return
+        
     print(f"[DVR:{camid}] Video saved → {path}")
 
 
