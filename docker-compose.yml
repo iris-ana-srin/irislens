@@ -2,12 +2,12 @@ services:
   cameramgmt:
     build: .
     image: irislens:latest
-    command: ["gunicorn", "--bind", "0.0.0.0:5051", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "cameramgmt.app:app"]
+    command: ["gunicorn", "--bind", "0.0.0.0:5050", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "cameramgmt.app:app"]
     environment:
       - HOST=0.0.0.0
-      - PORT2=5051
+      - PORT=5050
     ports:
-      - "5051:5051"
+      - "5050:5050"
     volumes:
       - ./data:/app/data
       - ./config.py:/app/config.py:ro
@@ -16,14 +16,14 @@ services:
   identity:
     build: .
     image: irislens:latest
-    command: ["gunicorn", "--bind", "0.0.0.0:5050", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "identity.app:app"]
+    command: ["gunicorn", "--bind", "0.0.0.0:5051", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "identity.app:app"]
     environment:
       - HOST=0.0.0.0
-      - PORT1=5050
+      - PORT1=5051
       - MQTT_BROKER=${MQTT_BROKER:-host.docker.internal}
       - MQTT_PORT=${MQTT_PORT:-1883}
     ports:
-      - "5050:5050"
+      - "5051:5051"
     volumes:
       - ./data:/app/data
       - ./identity/models:/app/identity/models:ro
@@ -33,10 +33,14 @@ services:
   surveillance:
     build: .
     image: irislens:latest
-    command: ["python", "-m", "surveillance.dvr"]
+    command: ["gunicorn", "--bind", "0.0.0.0:5052", "--worker-class", "gthread", "--threads", "8", "--timeout", "0", "surveillance.app:app"]
     environment:
+      - HOST=0.0.0.0
+      - PORT2=5052
       - MQTT_BROKER=${MQTT_BROKER:-host.docker.internal}
       - MQTT_PORT=${MQTT_PORT:-1883}
+    ports:
+      - "5052:5052"
     volumes:
       - ./data:/app/data
       - ./config.py:/app/config.py:ro

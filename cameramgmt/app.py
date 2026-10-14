@@ -4,7 +4,7 @@ import cv2
 from flask import Flask, Response, jsonify, render_template
 
 from cameramgmt.camera import CameraManager
-from config import CAMERAS, STREAM_FPS, JPEG_QUALITY, HOST, PORT2
+from config import CAMERAS, STREAM_FPS, JPEG_QUALITY, HOST, PORT
 
 app = Flask(__name__)
 
@@ -45,11 +45,11 @@ def index():
 
 
 if __name__ == "__main__":
-    print(f"[CameraViewer] Starting on http://localhost:{PORT2}")
+    print(f"[CameraViewer] Starting on http://localhost:{PORT}")
     for cid in camera_ids:
-        print(f"[CameraViewer]   {cid} → http://localhost:{PORT2}/stream/{cid}")
+        print(f"[CameraViewer]   {cid} → http://localhost:{PORT}/stream/{cid}")
     try:
-        app.run(host=HOST, port=PORT2, threaded=True)
+        app.run(host=HOST, port=PORT, threaded=True)
     except KeyboardInterrupt:
         pass
     finally:

@@ -4,8 +4,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 HOST = os.environ.get("HOST", "localhost")
-PORT1 = int(os.environ.get("PORT1", 5050))
-PORT2 = int(os.environ.get("PORT2", 5051))
+PORT = int(os.environ.get("PORT1", 5050))
+PORT1 = int(os.environ.get("PORT2", 5051))
+PORT2 = int(os.environ.get("PORT3", 5052))
 
 #-----CAMERAMGMT-----
 CAMERAS =   [

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IrisLens DVR - Video</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #060b14;
+  --panel: #0b1220;
+  --border: #0f1e35;
+  --border2: #1a3050;
+  --accent: #1e90ff;
+  --accent2: #58c4f7;
+  --text: #dce8f5;
+  --muted: #3d5a7a;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+  --glow: rgba(30,144,255,0.35);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* noise overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.shell {
+  display: grid;
+  grid-template-rows: 54px 1fr;
+  height: 100vh;
+}
+
+/* HEADER */
+header {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,11,20,0.9);
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  opacity: 0.6;
+}
+
+.logo {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.logo span { color: var(--accent); }
+
+.logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(from 200deg, #0047b3, #1e90ff, #58c4f7, #0047b3);
+  box-shadow: 0 0 12px var(--glow), 0 0 24px rgba(0,71,179,0.3);
+}
+
+/* MAIN */
+.main {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 100%;
+}
+
+/* SIDEBAR */
+#nav {
+  background: rgba(6,11,20,0.9);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+}
+
+#nav a {
+  display: block;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+  transition: 0.15s;
+  border: 1px solid transparent;
+}
+
+#nav a:hover {
+  color: var(--accent2);
+  border-color: var(--border2);
+  background: rgba(30,144,255,0.05);
+  box-shadow: 0 0 12px var(--glow);
+}
+
+/* VIEWER */
+#viewer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #02060c;
+}
+
+.frame {
+  width: 95%;
+  height: 95%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(11,18,32,0.4), rgba(0,0,0,0.6));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+
+video:hover {
+  box-shadow: 0 0 20px var(--glow);
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark"></div>
+      IRIS<span>Lens</span>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div id="nav"></div>
+
+    <div id="viewer">
+      <div class="frame">
+        <video id="video" controls></video>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function formatFilename(href) 
+{
+  const filename = decodeURIComponent(href.split("/").pop().split("?")[0]);
+  const match = filename.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(\.[^.]+)?$/i);
+  if (!match) { return filename; }
+
+  const [, year, month, day, hour, minute, second] = match;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  let h = Number(hour);
+
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${day}${months[Number(month) - 1]}${year}-${h}:${minute}:${second}${ampm}`;
+}
+
+fetch("./")
+.then(r => r.text())
+.then(html => {
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const links = [...doc.querySelectorAll("a")];
+  const nav = document.getElementById("nav");
+
+  links.forEach(link => {
+    const href = link.getAttribute("href");
+    if (!href) return;
+
+    if (/\.mp4$/i.test(href)) {
+      const a = document.createElement("a");
+      // a.textContent = decodeURIComponent(href);
+      a.textContent = formatFilename(href);
+
+      a.onclick = (e) => {
+        e.preventDefault();
+        const v = document.getElementById("video");
+        v.src = href;
+        v.load();
+        v.play();
+      };
+
+      nav.appendChild(a);
+    }
+  });
+
+});
+</script>
+
+</body>
+</html>

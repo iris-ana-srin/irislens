@@ -12,6 +12,9 @@ All modules run independent of each other. They run in both Windows environments
 
 ### To Do:
 1. ~~Containerize~~
+1. ~~Port IIS Manager a Flask Application~~
+1. ~~Fix Filenames display~~
+1. MQTT configurable by the user + Admin Page??
 2. (identity) Single backend ↔ MQTT ↔ WebUI/Optix
 1. Fix UI. Unify UI for all 3 modules.
 1. Check if gevent can be used instead of gthread --thread 8 and --timeout 0 (infinite hang risk -- deadlocked threads would never be killed by gunicorn) [Check](#the-golden-rule-for-choosing-workers-when-using-gevent)

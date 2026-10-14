@@ -113,15 +113,9 @@ def record_video(camid: str):
 
     if ffmpeg.stdin:
         ffmpeg.stdin.close()
-    stderr = (
-ffmpeg.stderr.read().decode("utf-8", errors="ignore")
-if ffmpeg.stderr
-else ""
-)
+    stderr = (ffmpeg.stderr.read().decode("utf-8", errors="ignore") if ffmpeg.stderr else "")
 
     rc = ffmpeg.wait()
-
-
     if rc != 0:
         print(f"[DVR:{camid}] FFmpeg failed:")
         print(stderr)
@@ -141,7 +135,7 @@ def handle_record(camid, value):
         threading.Thread(target=record_video, args=(camid,), daemon=True).start()
 
 
-if __name__ == "__main__":
+def start():
     cameras.start_all()
     for cid in camera_ids:
         threading.Thread(target=_prebuffer_feeder, args=(cid,), daemon=True).start()
@@ -154,10 +148,3 @@ if __name__ == "__main__":
                                     handlers        = { "snapreq":   handle_snapshot, "recordreq": handle_record},
                                 )
     mqtt_service.start()
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n[DVR] Stopping...")
-        cameras.stop_all()
